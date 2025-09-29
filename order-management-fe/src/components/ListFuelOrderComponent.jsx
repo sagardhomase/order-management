@@ -1,100 +1,108 @@
-import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom';
-import { deleteOrder, listOrders } from '../services/OrderService';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import DataTable from "react-data-table-component";
+import { deleteOrder, listOrders } from "../services/OrderService";
 
 const ListFuelOrderComponent = () => {
-
     const [orders, setOrders] = useState([]);
+    const [totalRows, setTotalRows] = useState(0);
+    const [loading, setLoading] = useState(false);
+
+    const [page, setPage] = useState(1);        
+    const [perPage, setPerPage] = useState(5);
+    const [sortField, setSortField] = useState("id");
+    const [sortDir, setSortDir] = useState("asc");
+    const [airportFilter, setAirportFilter] = useState("");
+
     const navigator = useNavigate();
-    const dummyData=[{
-        "id":1,
-        "tailNumber":564,
-        "airportCode": "DXB",
-        "requestedVolume":10,
-        "deliveryTimeWindow":10,
-        "status":"Pending",
-        "createdAt":10
-    }];
+
+    const fetchOrders = async () => {
+        setLoading(true);
+        try {
+            const response = await listOrders(page - 1, perPage, sortField, sortDir, airportFilter);
+            setOrders(response.data.content);
+            setTotalRows(response.data.totalElements);
+        } catch (error) {
+            console.error(error);
+        }
+        setLoading(false);
+    };
 
     useEffect(() => {
-         getOrders();
-    }, [])
+        fetchOrders();
+    }, [page, perPage, sortField, sortDir, airportFilter]);
 
-    function getOrders() {
-        listOrders().then((response) => {
-            console.log(response.data);
-            setOrders(response.data);
-        }).catch(error => {
-            console.error(error);
-        })
-    }
-    function handleAddOrder(){
-        navigator('/add-order');
-    }
-    function handleAEditOrder(id){
-        navigator(`/edit-order/${id}`);
-    }
-    function handleDeleteOrder(id){
+    const handleAddOrder = () => navigator("/add-order");
+    const handleEditOrder = (id) => navigator(`/edit-order/${id}`);
+    const handleDeleteOrder = (id) => {
         deleteOrder(id).then((response) => {
             setOrders(prev => prev.filter(o => o.id !== id));
         }).catch(error => {
             console.error(error);
         })
-    }
+    };
+
+    const columns = [
+        { name: "Tail Number", selector: (row) => row.tailNumber, sortable: true, sortField: "tailNumber" },
+        { name: "Airport Code", selector: (row) => row.airportCode, sortable: true, sortField: "airportCode" },
+        { name: "Requested Volume", selector: (row) => row.requestedVolume, sortable: true, sortField: "requestedVolume" },
+        { name: "Delivery Window", selector: (row) => row.deliveryTime, sortable: true, sortField: "deliveryTime" },
+        { name: "Status", selector: (row) => row.status, sortable: true, sortField: "status" },
+        {
+            name: "Action",
+            cell: (row) => (
+                <>
+                    <button className="btn btn-info btn-sm" onClick={() => handleEditOrder(row.id)}>Update</button>
+                    &nbsp;
+                    <button className="btn btn-danger btn-sm" onClick={() => handleDeleteOrder(row.id)}>Delete</button>
+                </>
+            ),
+        },
+    ];
+
+    const handleSort = (column, sortDirection) => {
+        setSortField(column.sortField || column.selector);
+        setSortDir(sortDirection);
+    };
+
     return (
         <div className="container">
-          <h2 className="text-center">Fuel Orders</h2>
-          <button className="btn btn-primary mb-3" onClick={handleAddOrder}>
-            Add Order
-          </button>
-      
-          {orders.length === 0 ? (
-            <div className="alert alert-info text-center">
-              No orders found.
-            </div>
-          ) : (
-            <table className="table table-striped table-bordered">
-              <thead>
-                <tr>
-                  <th>Tail Number</th>
-                  <th>Airport</th>
-                  <th>Requested Volume</th>
-                  <th>Delivery Window</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((e) => (
-                  <tr key={e.id}>
-                    <td>{e.tailNumber}</td>
-                    <td>{e.airportCode}</td>
-                    <td>{e.requestedVolume}</td>
-                    <td>{e.deliveryTime}</td>
-                    <td>{e.status}</td>
-                    <td>
-                      <button
-                        className="btn btn-info"
-                        onClick={() => handleAEditOrder(e.id)}
-                      >
-                        Update
-                      </button>
-                      &nbsp;
-                      <button
-                        className="btn btn-danger"
-                        onClick={() => handleDeleteOrder(e.id)}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      );
-      
-}
+            <h2 className="text-center">Fuel Orders</h2>
+                <DataTable
+                    columns={columns}
+                    data={orders}
+                    progressPending={loading}
+                    persistTableHead={true}
+                    pagination
+                    paginationServer
+                    sortServer={true}
+                    onSort={handleSort}
+                    highlightOnHover
+                    subHeader
+                    subHeaderComponent={
+                        <div className="d-flex justify-content-between w-100">
+                            <button className="btn btn-primary" onClick={handleAddOrder}>
+                                Add Order
+                            </button>
 
-export default ListFuelOrderComponent
+                            <input
+                                type="text"
+                                placeholder="Filter by airport code"
+                                className="form-control w-25"
+                                value={airportFilter}
+                                onChange={(e) => setAirportFilter(e.target.value)}
+                            />
+                        </div>
+
+                    }
+                    noDataComponent={
+                        <div className="text-center text-muted p-2">
+                            No records found.
+                        </div>
+                    }
+                />
+        </div>
+    );
+};
+
+export default ListFuelOrderComponent;

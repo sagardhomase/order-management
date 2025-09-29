@@ -17,6 +17,7 @@ function App() {
       <HeaderComponent/>
         <Routes>
           <Route path='/orders' element={<ListFuelOrderComponent/>}></Route>
+          <Route path='/' element={<ListFuelOrderComponent/>}></Route>
           <Route path='/add-order' element={<OrderComponent />}></Route>
           <Route path='/edit-order/:id' element = { <OrderComponent /> }></Route>
         </Routes>

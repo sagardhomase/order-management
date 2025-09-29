@@ -7,6 +7,10 @@ import com.fuel.order.demo.repository.OrderRepository;
 import com.fuel.order.demo.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.convert.ConversionService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -37,17 +41,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public List<OrderDTO> getOrders() {
-        List<Order> orders = orderRepository.findAll();
-        if (orders.isEmpty()) {
-            throw new BusinessException("O01", "No orders available", HttpStatus.NOT_FOUND);
-        }
-        return orders.stream()
-                .map(o -> conversionService.convert(o, OrderDTO.class))
-                .collect(Collectors.toList());
-    }
-
-    @Override
     public OrderDTO getOrder(Long id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("O02", "Order not found with id: " + id, HttpStatus.NOT_FOUND));
@@ -74,5 +67,17 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessException("O02", "Order not found with id: " + id, HttpStatus.NOT_FOUND);
         }
         orderRepository.deleteById(id);
+    }
+
+    @Override
+    public Page<OrderDTO> getOrders(int page, int size, String sortBy, String sortDir, String airportCode) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(sortDir), sortBy));
+        Page<Order> orderPage;
+        if (airportCode != null && !airportCode.isEmpty()) {
+             orderPage = orderRepository.findByAirportCodeContainingIgnoreCase(airportCode, pageable);
+        }else {
+             orderPage = orderRepository.findAll(pageable);
+        }
+        return orderPage.map(o->conversionService.convert(o, OrderDTO.class));
     }
 }
